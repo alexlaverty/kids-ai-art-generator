@@ -82,5 +82,89 @@
     "suffix": "pop art style, bold flat colors, repeated patterns, screen print look, Andy Warhol inspired",
     "description": "Loud, fun art from the 1960s with super-bold colors and repeating patterns. It turns everyday things into eye-popping art!",
     "fact": "Pop artists like Andy Warhol turned everyday things — even soup cans — into famous art!"
+  },
+  {
+    "name": "Impressionist",
+    "emoji": "🪷",
+    "suffix": "impressionist oil painting, in the style of Claude Monet, soft dappled brushstrokes, shimmering light and color",
+    "description": "Painting light itself! Quick, soft dabs of color that shimmer like sunshine on water, made famous by Claude Monet.",
+    "fact": "Impressionists painted outdoors really fast to catch the light before it changed — at first people thought their paintings looked unfinished!"
+  },
+  {
+    "name": "Pointillism",
+    "emoji": "🔵",
+    "suffix": "pointillism painting, in the style of Georges Seurat, made entirely of thousands of tiny colorful dots",
+    "description": "Whole pictures made of nothing but tiny dots of color. Stand back and the dots magically blend together!",
+    "fact": "Georges Seurat spent two whole years painting one picture out of millions of tiny dots!"
+  },
+  {
+    "name": "Cubism",
+    "emoji": "🧩",
+    "suffix": "cubist painting in the style of Pablo Picasso, geometric shapes, fractured angles, bold flat colors",
+    "description": "Pictures built from triangles, squares and funny angles, showing things from lots of directions at once — like a puzzle of a face.",
+    "fact": "Picasso painted faces from the front AND the side at the same time — that's why cubist noses look sideways!"
+  },
+  {
+    "name": "Surrealism",
+    "emoji": "🌙",
+    "suffix": "surrealist dreamlike painting, whimsical impossible scene, floating objects, gentle dream colors, Salvador Dali inspired",
+    "description": "Dream pictures! Things float, melt, and mix together in ways that could never happen in real life.",
+    "fact": "Surrealist painters made pictures of dreams — Salvador Dalí painted melting clocks and elephants on stilt legs!"
+  },
+  {
+    "name": "Paper Collage",
+    "emoji": "✂️",
+    "suffix": "paper collage art, cut paper shapes in the style of Henri Matisse, layered colorful construction paper, crisp cut edges",
+    "description": "Pictures made by cutting and layering colorful paper shapes — snip, arrange, and glue!",
+    "fact": "When the painter Henri Matisse got older, he 'painted with scissors' — cutting big shapes out of colored paper!"
+  },
+  {
+    "name": "Mosaic",
+    "emoji": "🏛️",
+    "suffix": "ancient mosaic artwork, made of small colorful ceramic tiles, visible grout lines, Roman mosaic style",
+    "description": "Pictures made from hundreds of little colored tiles, like the ancient Romans used to decorate their floors and walls.",
+    "fact": "Some Roman mosaic floors are 2,000 years old and their tiny tiles are still bright and colorful today!"
+  },
+  {
+    "name": "Egyptian",
+    "emoji": "🏺",
+    "suffix": "ancient Egyptian wall painting style, hieroglyphic mural, figures in side profile, gold and ochre tones, papyrus texture",
+    "description": "How the ancient Egyptians painted on temple walls: people standing sideways, bold outlines, and glowing desert-gold colors.",
+    "fact": "Egyptians drew people with sideways faces but front-facing shoulders — and they kept that style for 3,000 years!"
+  },
+  {
+    "name": "Ink Wash",
+    "emoji": "🖌️",
+    "suffix": "traditional Chinese ink wash painting, sumi-e brush strokes, flowing black ink with soft color accents, rice paper texture",
+    "description": "Gentle ink brushed onto paper with soft, flowing strokes — the beautiful traditional painting of China and Japan.",
+    "fact": "Ink wash painters practice single brushstrokes for years — one perfect stroke can be a whole bamboo leaf!"
+  },
+  {
+    "name": "Anime",
+    "emoji": "🎌",
+    "suffix": "anime style, cel shaded animation, expressive sparkly eyes, clean line art, vibrant colors",
+    "description": "The famous Japanese cartoon style with big expressive eyes, clean lines, and bright colors.",
+    "fact": "Anime artists draw about 24 pictures for every single second of a cartoon!"
+  },
+  {
+    "name": "Kawaii",
+    "emoji": "🌸",
+    "suffix": "kawaii style, super cute Japanese sticker art, chibi, pastel colors, adorable round shapes, happy faces",
+    "description": "The Japanese art of super-cute! Round shapes, happy faces, and soft pastel colors that make everything adorable.",
+    "fact": "'Kawaii' means 'cute' in Japanese — in Japan even police stations and airplanes have cute mascots!"
+  },
+  {
+    "name": "Street Art",
+    "emoji": "🛹",
+    "suffix": "vibrant street art mural, bold graffiti style painting, spray paint texture, dynamic energetic shapes, colorful urban wall art",
+    "description": "Giant, colorful murals like the ones painted on city walls — bold, energetic, and impossible to miss.",
+    "fact": "Some street artists paint pictures on buildings taller than 20 houses, using hundreds of cans of spray paint!"
+  },
+  {
+    "name": "Neon Glow",
+    "emoji": "🌃",
+    "suffix": "neon glow art, bright glowing neon outlines on a dark background, luminous synthwave colors, electric light painting",
+    "description": "Bright glowing lines that shine out of the dark like electric rainbow lights.",
+    "fact": "Neon signs glow because electricity makes the gas inside glass tubes light up like magic!"
   }
 ]

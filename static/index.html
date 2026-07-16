@@ -380,7 +380,7 @@
     overflow-y: auto;
     padding: 16px 12px 40px;
   }
-  .styles-inner { max-width: 1000px; margin: 0 auto; }
+  .styles-inner { width: 100%; margin: 0 auto; }
 
   .example-nav {
     display: flex;
@@ -413,8 +413,8 @@
 
   .styles-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
   }
   .style-page-card {
     background: #fff;
@@ -449,7 +449,6 @@
   .style-card-body { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .style-card-body h3 { color: #4a3aa8; font-size: 1.1rem; }
   .style-card-body .desc { font-size: .88rem; color: #444; flex: 1; }
-  .style-card-body .fact { font-size: .8rem; color: #5a4ab8; background: #f2edff; border-radius: 10px; padding: 6px 10px; }
   .try-style-btn {
     font-family: inherit;
     font-weight: bold;
@@ -794,11 +793,6 @@ function renderStylesPage() {
     desc.className = 'desc';
     desc.textContent = s.description || '';
     body.appendChild(desc);
-
-    const fact = document.createElement('div');
-    fact.className = 'fact';
-    fact.textContent = `💡 ${s.fact}`;
-    body.appendChild(fact);
 
     const tryBtn = document.createElement('button');
     tryBtn.className = 'try-style-btn';
