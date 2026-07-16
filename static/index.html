@@ -179,6 +179,22 @@
   }
   .fun-fact.show { display: block; }
 
+  .option-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .option-chip {
+    font-family: inherit;
+    font-size: .85rem;
+    font-weight: bold;
+    color: #4a3aa8;
+    background: #f2edff;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: transform .1s;
+  }
+  .option-chip:hover { transform: translateY(-1px); }
+  .option-chip.selected { border-color: #7c5cff; background: #e4dbff; }
+
   #prompt-input {
     width: 100%;
     font-family: inherit;
@@ -428,6 +444,10 @@
       <div class="composer-label">Pick a style (or none!)</div>
       <div class="style-strip" id="style-strip"></div>
       <div class="fun-fact" id="fun-fact"></div>
+      <div class="composer-label">Size</div>
+      <div class="option-row" id="size-row"></div>
+      <div class="composer-label">Shape</div>
+      <div class="option-row" id="shape-row"></div>
       <textarea id="prompt-input" rows="4" placeholder="What should I draw? (like: a dragon eating ice cream)"></textarea>
       <div class="btn-row">
         <button class="btn" id="surprise-btn" title="Pick a random style">🎲 Surprise!</button>
@@ -491,7 +511,37 @@ const surpriseBtn = document.getElementById('surprise-btn');
 let styles = [];
 let messages = [];
 let selectedStyle = '';
+let selectedSize = 'small';
+let selectedShape = 'square';
 let generating = false;
+
+const SIZE_OPTIONS = [
+  { id: 'small', label: '🐭 Small (fast!)' },
+  { id: 'medium', label: '🐰 Medium' },
+  { id: 'large', label: '🐘 Large (slow)' },
+];
+const SHAPE_OPTIONS = [
+  { id: 'square', label: '⬛ Square' },
+  { id: 'tall', label: '📱 Tall' },
+  { id: 'wide', label: '🖼️ Wide' },
+];
+
+function renderOptionRow(containerId, options, selectedId, onPick) {
+  const row = document.getElementById(containerId);
+  row.innerHTML = '';
+  for (const opt of options) {
+    const chip = document.createElement('button');
+    chip.className = 'option-chip' + (opt.id === selectedId ? ' selected' : '');
+    chip.textContent = opt.label;
+    chip.onclick = () => onPick(opt.id);
+    row.appendChild(chip);
+  }
+}
+
+function renderOptions() {
+  renderOptionRow('size-row', SIZE_OPTIONS, selectedSize, (id) => { selectedSize = id; renderOptions(); });
+  renderOptionRow('shape-row', SHAPE_OPTIONS, selectedShape, (id) => { selectedShape = id; renderOptions(); });
+}
 
 let examplePrompts = [];
 let styleImages = {};   // { styleName: { promptIndex: "styles/slug_0.png" } }
@@ -778,14 +828,15 @@ function scrollToBottom() {
   requestAnimationFrame(() => chatView.scrollTo({ top: chatView.scrollHeight, behavior: 'smooth' }));
 }
 
-/* ---------- particle loading animation ---------- */
-function addLoadingBubble() {
+/* ---------- particle loading animation + live preview ---------- */
+function addLoadingBubble(clientId) {
   const div = document.createElement('div');
   div.className = 'msg bot';
   div.innerHTML = `
     <div class="bubble">
       <div class="loading-wrap">
         <canvas width="320" height="180"></canvas>
+        <img style="display:none; width:100%; border-radius:14px;" alt="painting in progress">
         <div class="loading-text"></div>
       </div>
     </div>`;
@@ -830,10 +881,39 @@ function addLoadingBubble() {
     textEl.textContent = loadingMessages[msgIdx];
   }, 3500);
 
+  // poll the backend for ComfyUI's per-step preview so the picture
+  // appears out of the noise while it's being painted
+  const previewImg = div.querySelector('img');
+  let progressText = '';
+  let previewTimer = 0;
+  if (clientId) {
+    previewTimer = setInterval(async () => {
+      try {
+        const resp = await fetch(`/api/progress/${clientId}`);
+        if (!resp.ok) return;
+        const p = await resp.json();
+        if (p.max) progressText = ` (step ${p.value} of ${p.max})`;
+        if (p.preview) {
+          previewImg.src = `/api/preview/${clientId}?t=${Date.now()}`;
+          if (previewImg.style.display === 'none') {
+            previewImg.style.display = 'block';
+            canvas.style.display = 'none';
+            cancelAnimationFrame(raf);
+          }
+        }
+      } catch (err) { /* server briefly unreachable — keep trying */ }
+    }, 1000);
+  }
+  const baseTimer = setInterval(() => {
+    if (progressText) textEl.textContent = loadingMessages[msgIdx].replace('…', '…') + progressText;
+  }, 500);
+
   return {
     remove() {
       cancelAnimationFrame(raf);
       clearInterval(msgTimer);
+      clearInterval(previewTimer);
+      clearInterval(baseTimer);
       div.remove();
     },
   };
@@ -849,14 +929,21 @@ async function startGeneration(prompt, styleName) {
   createBtn.disabled = true;
   createBtn.textContent = '🖌️ Painting…';
 
+  const clientId = (crypto.randomUUID && crypto.randomUUID()) || `art-${Date.now()}-${Math.random()}`;
   addUserBubble(prompt, styleName);
-  const loader = addLoadingBubble();
+  const loader = addLoadingBubble(clientId);
 
   try {
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, style: styleName }),
+      body: JSON.stringify({
+        prompt,
+        style: styleName,
+        size: selectedSize,
+        orientation: selectedShape,
+        client_id: clientId,
+      }),
     });
     const data = await resp.json();
     loader.remove();
@@ -965,6 +1052,7 @@ async function init() {
   examplePrompts = await promptsResp.json();
   styleImages = await styleImagesResp.json();
   renderStyleStrip();
+  renderOptions();
   for (const msg of messages) {
     addUserBubble(msg.prompt, msg.style);
     addImageBubble(msg);

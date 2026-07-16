@@ -16,9 +16,10 @@ from io import BytesIO
 from pathlib import Path
 
 import httpx
+import websockets
 from PIL import Image
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -58,6 +59,31 @@ EXAMPLE_PROMPTS = [
 def style_slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
+
+# Base square edge per model family and size choice. Generation time scales
+# with pixel count, so "small" is the kid-friendly fast default.
+SIZE_PRESETS = {
+    "sd15": {"small": 512, "medium": 640, "large": 768},
+    "xl": {"small": 768, "medium": 1024, "large": 1216},
+}
+ORIENTATIONS = ("square", "tall", "wide")
+
+
+def resolve_dims(base: int, orientation: str) -> tuple[int, int]:
+    """Turn a base square edge + orientation into width/height (multiples of 64)."""
+    if orientation == "tall":
+        w, h = int(base * 0.75), base
+    elif orientation == "wide":
+        w, h = base, int(base * 0.75)
+    else:
+        w = h = base
+    return max(w // 64 * 64, 64), max(h // 64 * 64, 64)
+
+
+# Live preview frames and progress for in-flight generations, keyed by the
+# frontend-supplied client id. Filled by a websocket watcher per generation.
+PREVIEWS: dict[str, dict] = {}
+
 app = FastAPI(title="Art Robot")
 
 
@@ -87,14 +113,17 @@ with get_db() as _conn:
 class GenerateRequest(BaseModel):
     prompt: str
     style: str = ""
+    size: str = "small"
+    orientation: str = "square"
+    client_id: str = ""
 
 
-def build_checkpoint_workflow(positive: str, ckpt_name: str, size: int, seed: int) -> dict:
+def build_checkpoint_workflow(positive: str, ckpt_name: str, width: int, height: int, seed: int) -> dict:
     return {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt_name}},
         "2": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["1", 1]}},
         "3": {"class_type": "CLIPTextEncode", "inputs": {"text": NEGATIVE_PROMPT, "clip": ["1", 1]}},
-        "4": {"class_type": "EmptyLatentImage", "inputs": {"width": size, "height": size, "batch_size": 1}},
+        "4": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
         "5": {
             "class_type": "KSampler",
             "inputs": {
@@ -103,7 +132,7 @@ def build_checkpoint_workflow(positive: str, ckpt_name: str, size: int, seed: in
                 "negative": ["3", 0],
                 "latent_image": ["4", 0],
                 "seed": seed,
-                "steps": 20,
+                "steps": 12,
                 "cfg": 7,
                 "sampler_name": "euler",
                 "scheduler": "normal",
@@ -115,17 +144,16 @@ def build_checkpoint_workflow(positive: str, ckpt_name: str, size: int, seed: in
     }
 
 
-def build_flux2_workflow(positive: str, unet: str, text_encoder: str, vae: str, seed: int) -> dict:
+def build_flux2_workflow(positive: str, unet: str, text_encoder: str, vae: str, width: int, height: int, seed: int) -> dict:
     # Same graph as the proven-working new-hero.py script: separate UNET/CLIP/VAE
     # loaders, plain KSampler with cfg 4 and scheduler "simple", real negative prompt.
-    size = 1024
     return {
         "1": {"class_type": "UNETLoader", "inputs": {"unet_name": unet, "weight_dtype": "default"}},
         "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": text_encoder, "type": "flux2", "device": "default"}},
         "3": {"class_type": "VAELoader", "inputs": {"vae_name": vae}},
         "4": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["2", 0]}},
         "5": {"class_type": "CLIPTextEncode", "inputs": {"text": NEGATIVE_PROMPT, "clip": ["2", 0]}},
-        "6": {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": size, "height": size, "batch_size": 1}},
+        "6": {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
         "7": {
             "class_type": "KSampler",
             "inputs": {
@@ -134,7 +162,7 @@ def build_flux2_workflow(positive: str, unet: str, text_encoder: str, vae: str, 
                 "negative": ["5", 0],
                 "latent_image": ["6", 0],
                 "seed": seed,
-                "steps": 20,
+                "steps": 12,
                 "cfg": 4.0,
                 "sampler_name": "euler",
                 "scheduler": "simple",
@@ -152,14 +180,18 @@ async def list_models(client: httpx.AsyncClient, folder: str) -> list[str]:
     return resp.json()
 
 
-async def pick_workflow(client: httpx.AsyncClient, positive: str, seed: int) -> dict:
+async def pick_workflow(
+    client: httpx.AsyncClient, positive: str, seed: int, size: str = "medium", orientation: str = "square"
+) -> dict:
     """Choose a workflow based on what's installed: regular checkpoint if present,
     otherwise a Flux 2 diffusion model + text encoder + VAE."""
     checkpoints = await list_models(client, "checkpoints")
     if checkpoints:
         ckpt_name = checkpoints[0]
-        size = 1024 if any(tag in ckpt_name.lower() for tag in ("xl", "flux")) else 512
-        return build_checkpoint_workflow(positive, ckpt_name, size, seed)
+        family = "xl" if any(tag in ckpt_name.lower() for tag in ("xl", "flux")) else "sd15"
+        base = SIZE_PRESETS[family].get(size, SIZE_PRESETS[family]["medium"])
+        width, height = resolve_dims(base, orientation)
+        return build_checkpoint_workflow(positive, ckpt_name, width, height, seed)
 
     diffusion_models = await list_models(client, "diffusion_models")
     text_encoders = await list_models(client, "text_encoders")
@@ -172,58 +204,97 @@ async def pick_workflow(client: httpx.AsyncClient, positive: str, seed: int) -> 
             detail="ComfyUI is running but I couldn't find a usable model "
             "(need a checkpoint, or a Flux diffusion model + text encoder + VAE).",
         )
-    return build_flux2_workflow(positive, unet, text_encoders[0], vae, seed)
+    base = SIZE_PRESETS["xl"].get(size, SIZE_PRESETS["xl"]["medium"])
+    width, height = resolve_dims(base, orientation)
+    return build_flux2_workflow(positive, unet, text_encoders[0], vae, width, height, seed)
 
 
-async def run_comfy_generation(positive: str, seed: int) -> bytes:
+async def watch_preview(client_id: str):
+    """Relay ComfyUI's per-step progress + latent preview frames into PREVIEWS
+    so the frontend can show the picture emerging while it generates."""
+    uri = COMFY_URL.replace("http", "ws", 1) + f"/ws?clientId={client_id}"
+    try:
+        async with websockets.connect(uri, max_size=None) as ws:
+            while True:
+                msg = await ws.recv()
+                slot = PREVIEWS.setdefault(client_id, {})
+                if isinstance(msg, bytes):
+                    # binary frame: 4-byte event type (1 = preview image),
+                    # 4-byte image format, then the JPEG/PNG bytes
+                    if len(msg) > 8 and int.from_bytes(msg[:4], "big") == 1:
+                        slot["image"] = msg[8:]
+                else:
+                    data = json.loads(msg)
+                    if data.get("type") == "progress":
+                        slot["value"] = data["data"].get("value")
+                        slot["max"] = data["data"].get("max")
+    except (asyncio.CancelledError, Exception):
+        pass
+
+
+async def run_comfy_generation(
+    positive: str, seed: int, size: str = "medium", orientation: str = "square", client_id: str = ""
+) -> bytes:
     """Submit a text-to-image job to ComfyUI and return the PNG bytes."""
     async with httpx.AsyncClient(base_url=COMFY_URL, timeout=30) as client:
         try:
-            workflow = await pick_workflow(client, positive, seed)
+            workflow = await pick_workflow(client, positive, seed, size, orientation)
         except httpx.HTTPError:
             raise HTTPException(
                 status_code=503,
                 detail="The art robot isn't awake! Ask a grown-up to start ComfyUI.",
             )
-        resp = await client.post("/prompt", json={"prompt": workflow})
+        body = {"prompt": workflow}
+        watcher = None
+        if client_id:
+            body["client_id"] = client_id
+            watcher = asyncio.create_task(watch_preview(client_id))
+        resp = await client.post("/prompt", json=body)
         if resp.status_code != 200:
+            if watcher:
+                watcher.cancel()
             raise HTTPException(status_code=502, detail=f"ComfyUI rejected the job: {resp.text[:300]}")
         prompt_id = resp.json()["prompt_id"]
 
-        deadline = time.monotonic() + GENERATION_TIMEOUT_SECONDS
-        outputs = None
-        while time.monotonic() < deadline:
-            await asyncio.sleep(1)
-            resp = await client.get(f"/history/{prompt_id}")
-            history = resp.json().get(prompt_id)
-            if not history:
-                continue
-            if history.get("status", {}).get("status_str") == "error":
-                raise HTTPException(status_code=502, detail="The art robot had a problem making that one. Try again!")
-            if history.get("outputs"):
-                outputs = history["outputs"]
-                break
-        if outputs is None:
-            raise HTTPException(status_code=504, detail="The art robot took too long. Try again!")
+        try:
+            deadline = time.monotonic() + GENERATION_TIMEOUT_SECONDS
+            outputs = None
+            while time.monotonic() < deadline:
+                await asyncio.sleep(1)
+                resp = await client.get(f"/history/{prompt_id}")
+                history = resp.json().get(prompt_id)
+                if not history:
+                    continue
+                if history.get("status", {}).get("status_str") == "error":
+                    raise HTTPException(status_code=502, detail="The art robot had a problem making that one. Try again!")
+                if history.get("outputs"):
+                    outputs = history["outputs"]
+                    break
+            if outputs is None:
+                raise HTTPException(status_code=504, detail="The art robot took too long. Try again!")
 
-        image_ref = None
-        for node_output in outputs.values():
-            if node_output.get("images"):
-                image_ref = node_output["images"][0]
-                break
-        if image_ref is None:
-            raise HTTPException(status_code=502, detail="ComfyUI finished but made no image.")
+            image_ref = None
+            for node_output in outputs.values():
+                if node_output.get("images"):
+                    image_ref = node_output["images"][0]
+                    break
+            if image_ref is None:
+                raise HTTPException(status_code=502, detail="ComfyUI finished but made no image.")
 
-        resp = await client.get(
-            "/view",
-            params={
-                "filename": image_ref["filename"],
-                "subfolder": image_ref.get("subfolder", ""),
-                "type": image_ref.get("type", "output"),
-            },
-        )
-        resp.raise_for_status()
-        return resp.content
+            resp = await client.get(
+                "/view",
+                params={
+                    "filename": image_ref["filename"],
+                    "subfolder": image_ref.get("subfolder", ""),
+                    "type": image_ref.get("type", "output"),
+                },
+            )
+            resp.raise_for_status()
+            return resp.content
+        finally:
+            if watcher:
+                watcher.cancel()
+            PREVIEWS.pop(client_id, None)
 
 
 @app.get("/api/styles")
@@ -251,6 +322,22 @@ def list_style_images():
                 existing[i] = {"path": f"styles/{filename}", "mtime": file_path.stat().st_mtime}
         result[style["name"]] = existing
     return result
+
+
+@app.get("/api/progress/{client_id}")
+def get_progress(client_id: str):
+    slot = PREVIEWS.get(client_id)
+    if slot is None:
+        raise HTTPException(status_code=404, detail="no such generation")
+    return {"value": slot.get("value"), "max": slot.get("max"), "preview": "image" in slot}
+
+
+@app.get("/api/preview/{client_id}")
+def get_preview(client_id: str):
+    slot = PREVIEWS.get(client_id)
+    if slot is None or "image" not in slot:
+        raise HTTPException(status_code=404, detail="no preview yet")
+    return Response(content=slot["image"], media_type="image/jpeg")
 
 
 class StyleImageRequest(BaseModel):
@@ -297,8 +384,10 @@ async def generate(req: GenerateRequest):
     style = next((s for s in STYLES if s["name"] == req.style), None)
     positive = f"{prompt}, {style['suffix']}" if style else prompt
     seed = random.randint(0, 2**31)
+    size = req.size if req.size in ("small", "medium", "large") else "small"
+    orientation = req.orientation if req.orientation in ORIENTATIONS else "square"
     started = time.monotonic()
-    image_bytes = await run_comfy_generation(positive, seed)
+    image_bytes = await run_comfy_generation(positive, seed, size, orientation, req.client_id)
     elapsed = round(time.monotonic() - started, 1)
 
     filename = f"{int(time.time() * 1000)}_{seed}.png"
