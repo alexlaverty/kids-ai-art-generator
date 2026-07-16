@@ -76,7 +76,7 @@
 
   /* messages sit in one centered column: text above its image, nudged
      right/left so it still reads like a conversation */
-  .msg { display: flex; margin: 10px auto; max-width: 580px; animation: pop .25s ease-out; }
+  .msg { display: flex; margin: 10px auto; max-width: 660px; animation: pop .25s ease-out; }
   @keyframes pop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .msg.user { justify-content: flex-end; padding-left: 48px; }
   .msg.bot { justify-content: flex-start; padding-right: 48px; }
@@ -88,7 +88,13 @@
     font-size: 1.05rem;
   }
   .msg.user .bubble { background: var(--bubble-user); color: #fff; border-bottom-right-radius: 6px; }
-  .msg.bot .bubble { background: var(--bubble-bot); color: #333; border-bottom-left-radius: 6px; }
+  .msg.bot .bubble {
+    background: var(--bubble-bot);
+    color: #333;
+    border-bottom-left-radius: 6px;
+    /* 440px image + 2×16px padding: text wraps at the image edge, no gap */
+    max-width: min(100%, 472px);
+  }
   .style-chip {
     display: inline-block;
     margin-top: 6px;
@@ -100,23 +106,17 @@
   .bubble img {
     display: block;
     max-width: 100%;
-    width: 320px;
+    width: 440px;
     border-radius: 14px;
     cursor: pointer;
   }
-  .redo-btn {
-    font-family: inherit;
+  .bubble .img-style-name {
     margin-top: 8px;
-    border: none;
-    background: #ffe3c7;
-    color: #b05a00;
     font-weight: bold;
-    font-size: .95rem;
-    padding: 6px 14px;
-    border-radius: 999px;
-    cursor: pointer;
+    color: #4a3aa8;
+    font-size: 1.05rem;
   }
-  .redo-btn:hover { background: #ffd1a3; }
+  .bubble .img-desc { margin-top: 2px; font-size: .88rem; color: #444; }
   .error-bubble { background: #ffe1e1 !important; color: #a33 !important; }
   .elapsed-time {
     margin-top: 6px;
@@ -126,7 +126,7 @@
   }
 
   /* loading bubble */
-  .loading-wrap { width: 320px; max-width: 100%; }
+  .loading-wrap { width: 440px; max-width: 100%; }
   .loading-wrap canvas { width: 100%; border-radius: 14px; display: block; }
   .loading-text { text-align: center; margin-top: 8px; color: #6a5acd; font-weight: bold; min-height: 1.4em; }
 
@@ -146,28 +146,64 @@
 
   .composer-label { font-size: .9rem; color: #4a3aa8; font-weight: bold; }
 
-  .style-strip {
+  #style-select {
+    width: 100%;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #4a3aa8;
+    border: 2px solid #d3c6ff;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+  }
+  #style-select:focus { border-color: #7c5cff; }
+
+  /* collapsible Size / Shape sections */
+  .accordion {
+    background: #f7f4ff;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .accordion summary {
+    list-style: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: #4a3aa8;
+    font-size: .95rem;
+    padding: 10px 14px;
+    user-select: none;
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
   }
-  .style-card {
-    flex: 0 0 auto;
-    font-family: inherit;
-    border: 3px solid transparent;
-    border-radius: 16px;
-    background: #f2edff;
-    padding: 6px 10px;
-    text-align: center;
-    cursor: pointer;
-    font-size: .8rem;
-    color: #4a3aa8;
-    font-weight: bold;
-    transition: transform .1s;
+  .accordion summary::-webkit-details-marker { display: none; }
+  .accordion summary::after { content: '▸'; transition: transform .15s; }
+  .accordion[open] summary::after { transform: rotate(90deg); }
+  .accordion .option-row { padding: 0 12px 12px; }
+
+  /* shape chips show a literal aspect-ratio frame */
+  .shape-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border-radius: 14px;
+    padding: 8px 14px;
   }
-  .style-card:hover { transform: translateY(-2px); }
-  .style-card.selected { border-color: #7c5cff; background: #e4dbff; }
-  .style-card .emoji { font-size: 1.3rem; display: block; }
+  .shape-frame-box { height: 32px; display: flex; align-items: center; }
+  .shape-frame {
+    display: block;
+    border: 3px solid currentColor;
+    border-radius: 4px;
+    background: rgba(124,92,255,.12);
+  }
+  .shape-frame.square { width: 26px; height: 26px; }
+  .shape-frame.tall   { width: 20px; height: 30px; }
+  .shape-frame.wide   { width: 34px; height: 21px; }
 
   .fun-fact {
     font-size: .9rem;
@@ -240,7 +276,6 @@
       max-height: 45vh;
       box-shadow: 0 -4px 20px rgba(80,60,160,.15);
     }
-    .style-strip { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
     #prompt-input { min-height: 60px; }
   }
 
@@ -305,24 +340,53 @@
     font-weight: bold;
   }
   .reel-value.spinning { filter: blur(1px); opacity: .7; }
-  .reel-btns { display: flex; gap: 6px; }
+  .reel-value.empty { justify-content: center; }
+  .reel-ghost {
+    font-size: 2rem;
+    filter: grayscale(1);
+    opacity: .35;
+    animation: ghost-bob 2s ease-in-out infinite;
+  }
+  @keyframes ghost-bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50%      { transform: translateY(-5px) rotate(4deg); }
+  }
+  .reel-btns { display: flex; gap: 8px; justify-content: center; }
   .reel-btn {
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 1.25rem;
     border: none;
     background: #f2edff;
-    border-radius: 10px;
-    padding: 4px 10px;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: transform .1s;
   }
-  .reel-btn:hover { transform: scale(1.1); }
+  .reel-btn:hover { transform: scale(1.12); }
   #spin-btn {
     font-size: 1.4rem;
     padding: 14px 44px;
     background: linear-gradient(135deg, #ff8a3d, #ff5ca8);
     color: #fff;
     box-shadow: 0 6px 20px rgba(255,92,168,.45);
+  }
+  #spin-btn.bouncing { animation: spin-bounce .45s ease; }
+  @keyframes spin-bounce {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(.92) translateY(3px); }
+    60%  { transform: scale(1.08) translateY(-5px); }
+    100% { transform: scale(1); }
+  }
+  .gen-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  #gen-speak-btn {
+    font-size: 1.15rem;
+    padding: 12px 24px;
+    background: #ffe9a8;
+    color: #8a6d00;
   }
   #gen-sentence {
     width: 100%;
@@ -369,7 +433,8 @@
   }
   .gallery-item:hover { transform: scale(1.03); }
   .gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
-  .gallery-item .caption { padding: 8px 10px 2px; font-size: .85rem; color: #444; }
+  .gallery-item .style-name { padding: 8px 10px 0; font-weight: bold; color: #4a3aa8; font-size: 1rem; }
+  .gallery-item .caption { padding: 4px 10px 2px; font-size: .85rem; color: #444; }
   .gallery-item .caption-time { padding: 0 10px 8px; font-size: .75rem; color: #8a7bd8; font-weight: bold; }
   .gallery-empty { text-align: center; color: #6a5acd; font-size: 1.1rem; padding: 40px 0; }
 
@@ -423,6 +488,14 @@
     box-shadow: 0 3px 12px rgba(80,60,160,.15);
     display: flex;
     flex-direction: column;
+    cursor: pointer;
+    border: 4px solid transparent;
+    transition: transform .1s, border-color .15s, box-shadow .15s;
+  }
+  .style-page-card:hover { transform: translateY(-3px); }
+  .style-page-card.selected {
+    border-color: #ffd54f;
+    box-shadow: 0 0 0 4px rgba(255,213,79,.4), 0 6px 22px rgba(255,193,7,.5);
   }
   .style-page-card img {
     width: 100%;
@@ -449,19 +522,22 @@
   .style-card-body { padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .style-card-body h3 { color: #4a3aa8; font-size: 1.1rem; }
   .style-card-body .desc { font-size: .88rem; color: #444; flex: 1; }
-  .try-style-btn {
-    font-family: inherit;
-    font-weight: bold;
-    font-size: .95rem;
-    border: none;
-    border-radius: 999px;
-    padding: 8px 14px;
-    cursor: pointer;
+  .use-style-bar {
+    position: sticky;
+    bottom: 12px;
+    display: none;
+    justify-content: center;
+    margin-top: 16px;
+    z-index: 20;
+  }
+  .use-style-bar.show { display: flex; }
+  #use-style-btn {
+    font-size: 1.15rem;
+    padding: 12px 36px;
     background: linear-gradient(135deg, #7c5cff, #ff5ca8);
     color: #fff;
-    transition: transform .1s;
+    box-shadow: 0 6px 24px rgba(124,92,255,.55);
   }
-  .try-style-btn:hover { transform: scale(1.04); }
 
   /* ---------- settings modal ---------- */
   .modal-overlay {
@@ -543,18 +619,22 @@
   <div id="chat-layout">
     <div id="chat-view"></div>
     <aside class="composer" id="composer">
-      <div class="composer-label">Pick a style (or none!)</div>
-      <div class="style-strip" id="style-strip"></div>
-      <div class="fun-fact" id="fun-fact"></div>
-      <div class="composer-label">Size</div>
-      <div class="option-row" id="size-row"></div>
-      <div class="composer-label">Shape</div>
-      <div class="option-row" id="shape-row"></div>
       <textarea id="prompt-input" rows="4" placeholder="What should I draw? (like: a dragon eating ice cream)"></textarea>
       <div class="btn-row">
         <button class="btn" id="surprise-btn" title="Pick a random style">🎲 Surprise!</button>
         <button class="btn" id="create-btn">✨ Create!</button>
       </div>
+      <div class="composer-label">Pick a style (or none!)</div>
+      <select id="style-select"></select>
+      <div class="fun-fact" id="fun-fact"></div>
+      <details class="accordion" id="size-accordion">
+        <summary id="size-summary">📏 Size</summary>
+        <div class="option-row" id="size-row"></div>
+      </details>
+      <details class="accordion" id="shape-accordion">
+        <summary id="shape-summary">🖼️ Shape</summary>
+        <div class="option-row" id="shape-row"></div>
+      </details>
     </aside>
   </div>
 
@@ -569,13 +649,16 @@
           <div class="reel-value" id="style-reel-value">🎲 any style</div>
           <div class="reel-btns">
             <button class="reel-btn" id="style-reel-lock" title="Keep this one">🔓</button>
-            <button class="reel-btn" id="style-reel-spin" title="Spin just this">🎲</button>
+            <button class="reel-btn" id="style-reel-spin" title="Spin just this">🔄</button>
           </div>
         </div>
       </div>
       <button class="btn" id="spin-btn">🎰 SPIN!</button>
       <textarea id="gen-sentence" rows="3" placeholder="Spin to make an idea, or type your own…"></textarea>
-      <button class="btn" id="gen-create-btn">✨ Create!</button>
+      <div class="gen-actions">
+        <button class="btn" id="gen-speak-btn" title="Read my idea out loud">🔊 Read it!</button>
+        <button class="btn" id="gen-create-btn">✨ Create!</button>
+      </div>
     </div>
   </div>
 
@@ -597,6 +680,9 @@
         <button class="nav-btn" id="example-next">Next ▶</button>
       </div>
       <div class="styles-grid" id="styles-grid"></div>
+      <div class="use-style-bar" id="use-style-bar">
+        <button class="btn" id="use-style-btn">🖌️ Use this style!</button>
+      </div>
     </div>
   </div>
 </main>
@@ -625,7 +711,7 @@ const galleryGrid = document.getElementById('gallery-grid');
 const galleryEmpty = document.getElementById('gallery-empty');
 const stylesView = document.getElementById('styles-view');
 const stylesGrid = document.getElementById('styles-grid');
-const styleStrip = document.getElementById('style-strip');
+const styleSelect = document.getElementById('style-select');
 const funFact = document.getElementById('fun-fact');
 const promptInput = document.getElementById('prompt-input');
 const createBtn = document.getElementById('create-btn');
@@ -644,9 +730,9 @@ const SIZE_OPTIONS = [
   { id: 'large', label: '🐘 Large (slow)' },
 ];
 const SHAPE_OPTIONS = [
-  { id: 'square', label: '⬛ Square' },
-  { id: 'tall', label: '📱 Tall' },
-  { id: 'wide', label: '🖼️ Wide' },
+  { id: 'square', label: 'Square' },
+  { id: 'tall', label: 'Tall' },
+  { id: 'wide', label: 'Wide' },
 ];
 
 function renderOptionRow(containerId, options, selectedId, onPick) {
@@ -661,9 +747,31 @@ function renderOptionRow(containerId, options, selectedId, onPick) {
   }
 }
 
+function renderShapeRow() {
+  const row = document.getElementById('shape-row');
+  row.innerHTML = '';
+  for (const opt of SHAPE_OPTIONS) {
+    const chip = document.createElement('button');
+    chip.className = 'option-chip shape-chip' + (opt.id === selectedShape ? ' selected' : '');
+    const box = document.createElement('span');
+    box.className = 'shape-frame-box';
+    const frame = document.createElement('span');
+    frame.className = 'shape-frame ' + opt.id;
+    box.appendChild(frame);
+    chip.appendChild(box);
+    chip.appendChild(document.createTextNode(opt.label));
+    chip.onclick = () => { selectedShape = opt.id; renderOptions(); };
+    row.appendChild(chip);
+  }
+}
+
 function renderOptions() {
   renderOptionRow('size-row', SIZE_OPTIONS, selectedSize, (id) => { selectedSize = id; renderOptions(); });
-  renderOptionRow('shape-row', SHAPE_OPTIONS, selectedShape, (id) => { selectedShape = id; renderOptions(); });
+  renderShapeRow();
+  const size = SIZE_OPTIONS.find(o => o.id === selectedSize);
+  const shape = SHAPE_OPTIONS.find(o => o.id === selectedShape);
+  document.getElementById('size-summary').textContent = `📏 Size — ${size ? size.label : ''}`;
+  document.getElementById('shape-summary').textContent = `🖼️ Shape — ${shape ? shape.label : ''}`;
 }
 
 let examplePrompts = [];
@@ -713,20 +821,26 @@ function switchTab(tab) {
 /* ---------- styles ---------- */
 function styleByName(name) { return styles.find(s => s.name === name); }
 
-function renderStyleStrip() {
-  styleStrip.innerHTML = '';
+function renderStyleSelect() {
+  styleSelect.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = '✏️ No style — just my idea!';
+  styleSelect.appendChild(none);
   for (const s of styles) {
-    const card = document.createElement('button');
-    card.className = 'style-card' + (selectedStyle === s.name ? ' selected' : '');
-    card.innerHTML = `<span class="emoji">${s.emoji}</span>${s.name}`;
-    card.onclick = () => selectStyle(selectedStyle === s.name ? '' : s.name);
-    styleStrip.appendChild(card);
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = `${s.emoji} ${s.name}`;
+    styleSelect.appendChild(opt);
   }
+  styleSelect.value = selectedStyle;
 }
+
+styleSelect.onchange = () => selectStyle(styleSelect.value);
 
 function selectStyle(name) {
   selectedStyle = name;
-  renderStyleStrip();
+  styleSelect.value = name;
   const s = styleByName(name);
   funFact.classList.toggle('show', !!s);
   if (s) funFact.textContent = `${s.emoji} ${s.fact}`;
@@ -752,6 +866,8 @@ function stepExample(delta) {
   renderStylesPage();
 }
 
+let pageSelectedStyle = '';   // which card is highlighted on the Styles page
+
 function renderStylesPage() {
   if (examplePrompts.length) {
     document.getElementById('example-prompt-text').textContent = `“${examplePrompts[exampleIndex]}”`;
@@ -761,7 +877,11 @@ function renderStylesPage() {
   stylesGrid.innerHTML = '';
   for (const s of styles) {
     const card = document.createElement('div');
-    card.className = 'style-page-card';
+    card.className = 'style-page-card' + (pageSelectedStyle === s.name ? ' selected' : '');
+    card.onclick = () => {
+      pageSelectedStyle = pageSelectedStyle === s.name ? '' : s.name;
+      renderStylesPage();
+    };
 
     const entry = (styleImages[s.name] || {})[exampleIndex];
     if (entry) {
@@ -769,11 +889,14 @@ function renderStylesPage() {
       img.src = `/images/${entry.path}?v=${Date.now()}`;
       img.alt = `${s.name} example`;
       img.loading = 'lazy';
-      img.onclick = () => openLightbox({
-        filename: entry.path,
-        prompt: examplePrompts[exampleIndex],
-        style: s.name,
-      });
+      img.onclick = (e) => {
+        e.stopPropagation();
+        openLightbox({
+          filename: entry.path,
+          prompt: examplePrompts[exampleIndex],
+          style: s.name,
+        });
+      };
       card.appendChild(img);
     } else {
       const ph = document.createElement('div');
@@ -794,20 +917,24 @@ function renderStylesPage() {
     desc.textContent = s.description || '';
     body.appendChild(desc);
 
-    const tryBtn = document.createElement('button');
-    tryBtn.className = 'try-style-btn';
-    tryBtn.textContent = '🖌️ Try this style!';
-    tryBtn.onclick = () => {
-      selectStyle(s.name);
-      switchTab('chat');
-      promptInput.focus();
-    };
-    body.appendChild(tryBtn);
-
     card.appendChild(body);
     stylesGrid.appendChild(card);
   }
+
+  const useBar = document.getElementById('use-style-bar');
+  const picked = styleByName(pageSelectedStyle);
+  useBar.classList.toggle('show', !!picked);
+  if (picked) {
+    document.getElementById('use-style-btn').textContent = `🖌️ Use ${picked.emoji} ${picked.name}!`;
+  }
 }
+
+document.getElementById('use-style-btn').onclick = () => {
+  if (!pageSelectedStyle) return;
+  selectStyle(pageSelectedStyle);
+  switchTab('chat');
+  promptInput.focus();
+};
 
 /* ---------- settings + bulk generation ---------- */
 const settingsModal = document.getElementById('settings-modal');
@@ -916,17 +1043,23 @@ function addImageBubble(msg) {
   img.alt = msg.prompt;
   img.onclick = () => openLightbox(msg);
   bubble.appendChild(img);
+  const s = styleByName(msg.style);
+  if (s) {
+    const styleEl = document.createElement('div');
+    styleEl.className = 'img-style-name';
+    styleEl.textContent = `${s.emoji} ${s.name}`;
+    bubble.appendChild(styleEl);
+  }
+  const descEl = document.createElement('div');
+  descEl.className = 'img-desc';
+  descEl.textContent = msg.prompt;
+  bubble.appendChild(descEl);
   if (msg.elapsed_seconds != null) {
     const timeEl = document.createElement('div');
     timeEl.className = 'elapsed-time';
     timeEl.textContent = `⏱️ Made in ${formatElapsed(msg.elapsed_seconds)}`;
     bubble.appendChild(timeEl);
   }
-  const redo = document.createElement('button');
-  redo.className = 'redo-btn';
-  redo.textContent = '🔁 Make another!';
-  redo.onclick = () => startGeneration(msg.prompt, msg.style);
-  bubble.appendChild(redo);
   div.appendChild(bubble);
   chatView.appendChild(div);
   scrollToBottom();
@@ -1096,10 +1229,10 @@ promptInput.addEventListener('keydown', (e) => {
 let promptParts = {};
 const GOLDEN_CHANCE = 0.02;
 const REELS = [
-  { id: 'who', label: 'Who?', symbol: 'who_shape', golden: 'golden_who' },
-  { id: 'doing', label: 'Doing what?', symbol: 'doing_shape', golden: 'golden_doing' },
-  { id: 'where', label: 'Where?', symbol: 'where_shape', golden: null },
-  { id: 'twist', label: 'Special twist', symbol: 'twist_shape', golden: 'golden_twist' },
+  { id: 'who', label: 'Who?', symbol: 'who_shape', golden: 'golden_who', ghost: '🔍' },
+  { id: 'doing', label: 'Doing what?', symbol: 'doing_shape', golden: 'golden_doing', ghost: '❓' },
+  { id: 'where', label: 'Where?', symbol: 'where_shape', golden: null, ghost: '🗺️' },
+  { id: 'twist', label: 'Special twist', symbol: 'twist_shape', golden: 'golden_twist', ghost: '✨' },
 ];
 const reelState = {};   // id -> { value, locked, golden }
 
@@ -1150,10 +1283,16 @@ function renderReels() {
       <div class="reel-value" id="reel-value-${reel.id}"></div>
       <div class="reel-btns">
         <button class="reel-btn" title="Keep this one">${st.locked ? '🔒' : '🔓'}</button>
-        <button class="reel-btn" title="Spin just this">🎲</button>
+        <button class="reel-btn" title="Spin just this one again">🔄</button>
       </div>`;
     div.querySelector('.reel-label').textContent = (st.golden ? '⭐ ' : '') + reel.label;
-    div.querySelector('.reel-value').textContent = st.value || '—';
+    const valueEl = div.querySelector('.reel-value');
+    if (st.value) {
+      valueEl.textContent = st.value;
+    } else {
+      valueEl.classList.add('empty');
+      valueEl.innerHTML = `<span class="reel-ghost">${reel.ghost}</span>`;
+    }
     const [lockBtn, spinBtn] = div.querySelectorAll('.reel-btn');
     lockBtn.onclick = () => { st.locked = !st.locked; reelState[reel.id] = st; renderReels(); };
     spinBtn.onclick = () => spinReels([reel]);
@@ -1180,7 +1319,7 @@ function spinReels(reels) {
       lastFlip = now;
       for (const reel of targets) {
         const el = document.getElementById(`reel-value-${reel.id}`);
-        if (el) { el.classList.add('spinning'); el.textContent = expandSymbol(reel.symbol); }
+        if (el) { el.classList.add('spinning'); el.classList.remove('empty'); el.textContent = expandSymbol(reel.symbol); }
       }
     }
     requestAnimationFrame(tick);
@@ -1217,9 +1356,79 @@ function spinStyleReel() {
   requestAnimationFrame(tick);
 }
 
+/* juicy feedback: ding + confetti when a spin lands */
+let audioCtx;
+function playDing() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.09);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.5);
+  } catch (err) { /* no audio? no problem */ }
+}
+
+function burstConfetti(anchor) {
+  const rect = anchor.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const colors = ['#ff5ca8', '#7c5cff', '#ffd54f', '#4dd0e1', '#81c784', '#ff8a3d'];
+  for (let i = 0; i < 28; i++) {
+    const piece = document.createElement('div');
+    const size = 6 + Math.random() * 6;
+    piece.style.cssText = `position:fixed;left:${cx}px;top:${cy}px;width:${size}px;height:${size * 0.6}px;` +
+      `background:${colors[i % colors.length]};border-radius:2px;pointer-events:none;z-index:100;`;
+    document.body.appendChild(piece);
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 130;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist - 90;
+    const anim = piece.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${dx}px, ${dy + 170}px) rotate(${360 + Math.random() * 360}deg)`, opacity: 0 },
+    ], { duration: 900 + Math.random() * 400, easing: 'cubic-bezier(.15,.6,.4,1)' });
+    anim.onfinish = () => piece.remove();
+  }
+}
+
 document.getElementById('style-reel-lock').onclick = () => { genStyleLocked = !genStyleLocked; renderStyleReel(); };
 document.getElementById('style-reel-spin').onclick = () => spinStyleReel();
-document.getElementById('spin-btn').onclick = () => { spinReels(REELS); spinStyleReel(); };
+const spinBtn = document.getElementById('spin-btn');
+spinBtn.onclick = () => {
+  spinBtn.classList.remove('bouncing');
+  void spinBtn.offsetWidth;   // restart the bounce animation
+  spinBtn.classList.add('bouncing');
+  spinReels(REELS);
+  spinStyleReel();
+  setTimeout(() => { playDing(); burstConfetti(spinBtn); }, 570);   // just after the reels stop
+};
+
+/* read the idea out loud for kids who can't read yet */
+const speakBtn = document.getElementById('gen-speak-btn');
+speakBtn.onclick = () => {
+  const text = document.getElementById('gen-sentence').value.trim();
+  if (!text) return;
+  if (!('speechSynthesis' in window)) {
+    speakBtn.textContent = '😢 No voice here';
+    setTimeout(() => { speakBtn.textContent = '🔊 Read it!'; }, 2000);
+    return;
+  }
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.9;
+  utter.pitch = 1.1;
+  utter.onstart = () => { speakBtn.textContent = '🗣️ Reading…'; };
+  const done = () => { speakBtn.textContent = '🔊 Read it!'; };
+  utter.onend = done;
+  utter.onerror = done;
+  speechSynthesis.speak(utter);
+};
 
 document.getElementById('gen-create-btn').onclick = () => {
   const text = document.getElementById('gen-sentence').value.trim();
@@ -1239,17 +1448,24 @@ function renderGenCounter() {
 }
 
 /* ---------- gallery ---------- */
-function galleryItem(msg, captionText) {
+function galleryItem(msg) {
   const item = document.createElement('div');
   item.className = 'gallery-item';
   const img = document.createElement('img');
   img.src = `/images/${msg.filename}`;
   img.alt = msg.prompt;
   img.loading = 'lazy';
+  item.appendChild(img);
+  const s = styleByName(msg.style);
+  if (s) {
+    const styleEl = document.createElement('div');
+    styleEl.className = 'style-name';
+    styleEl.textContent = `${s.emoji} ${s.name}`;
+    item.appendChild(styleEl);
+  }
   const cap = document.createElement('div');
   cap.className = 'caption';
-  cap.textContent = captionText;
-  item.appendChild(img);
+  cap.textContent = msg.prompt;
   item.appendChild(cap);
   if (msg.elapsed_seconds != null) {
     const timeEl = document.createElement('div');
@@ -1267,27 +1483,23 @@ function renderGallery() {
   // merge chat creations and style example images, newest first
   const entries = [];
   for (const msg of messages) {
-    const s = styleByName(msg.style);
     entries.push({
       msg,
-      caption: (s ? s.emoji + ' ' : '') + msg.prompt,
       ts: Date.parse((msg.created_at || '').replace(' ', 'T')) || 0,
     });
   }
   for (const s of styles) {
     const imgs = styleImages[s.name] || {};
     for (const idx of Object.keys(imgs)) {
-      const prompt = examplePrompts[idx] || '';
       entries.push({
-        msg: { filename: imgs[idx].path, prompt, style: s.name },
-        caption: `${s.emoji} ${s.name} — ${prompt}`,
+        msg: { filename: imgs[idx].path, prompt: examplePrompts[idx] || '', style: s.name },
         ts: (imgs[idx].mtime || 0) * 1000,
       });
     }
   }
   entries.sort((a, b) => b.ts - a.ts);
 
-  for (const e of entries) galleryGrid.appendChild(galleryItem(e.msg, e.caption));
+  for (const e of entries) galleryGrid.appendChild(galleryItem(e.msg));
   galleryEmpty.style.display = entries.length ? 'none' : 'block';
 }
 
@@ -1316,7 +1528,7 @@ async function init() {
   examplePrompts = await promptsResp.json();
   styleImages = await styleImagesResp.json();
   promptParts = await partsResp.json();
-  renderStyleStrip();
+  renderStyleSelect();
   renderOptions();
   renderReels();
   renderStyleReel();
