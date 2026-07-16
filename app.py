@@ -12,9 +12,11 @@ import random
 import re
 import sqlite3
 import time
+from io import BytesIO
 from pathlib import Path
 
 import httpx
+from PIL import Image
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -243,7 +245,7 @@ def list_style_images():
         slug = style_slug(style["name"])
         existing = {}
         for i in range(len(EXAMPLE_PROMPTS)):
-            filename = f"{slug}_{i}.png"
+            filename = f"{slug}_{i}.webp"
             file_path = STYLE_IMAGES_DIR / filename
             if file_path.exists():
                 existing[i] = {"path": f"styles/{filename}", "mtime": file_path.stat().st_mtime}
@@ -268,8 +270,9 @@ async def generate_style_image(req: StyleImageRequest):
     seed = random.randint(0, 2**31)
     image_bytes = await run_comfy_generation(positive, seed)
 
-    filename = f"{style_slug(style['name'])}_{req.prompt_index}.png"
-    (STYLE_IMAGES_DIR / filename).write_bytes(image_bytes)
+    # examples ship in the git repo, so store them as WebP (~10x smaller than PNG)
+    filename = f"{style_slug(style['name'])}_{req.prompt_index}.webp"
+    Image.open(BytesIO(image_bytes)).save(STYLE_IMAGES_DIR / filename, "WEBP", quality=85)
     return {
         "style": style["name"],
         "prompt_index": req.prompt_index,

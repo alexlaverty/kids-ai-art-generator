@@ -1,6 +1,9 @@
-# generated at runtime — personal chat history and images
+# generated at runtime — personal chat history and the kids' images.
+# images/styles/ (the style example set) IS checked in so users don't have
+# to spend hours regenerating it; the /* form is required for the negation.
 chat.db
-images/
+images/*
+!images/styles/
 
 # python
 __pycache__/
