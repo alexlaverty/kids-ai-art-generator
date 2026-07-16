@@ -18,7 +18,16 @@ pixel art, claymation, or a Van Gogh painting.
 - **Chat interface** — type a prompt, optionally pick a style card, press Create.
   A 🎲 Surprise button fills in a random prompt and style; every result has a
   "Make another!" button that reruns the prompt with a new seed, and shows how
-  long the image took to generate.
+  long the image took to generate. Size (small/medium/large) and shape
+  (square/tall/wide) chips control the render, and the loading bubble shows
+  per-step progress (plus a live preview if ComfyUI's preview method is
+  enabled).
+- **🎰 Idea Machine** — a Generator tab with slot-machine reels (who / doing
+  what / where / special twist / style). A recursive word grammar in
+  [`prompt-parts.json`](prompt-parts.json) assembles trillions of unique
+  prompts from a few hundred words; each reel can be locked or rerolled
+  individually, rare "golden" words shimmer, and the sentence is fully
+  editable before hitting Create.
 - **Styles learning page** — each of the 12 styles has a description written for
   kids, a fun fact, and example images. Back/Next buttons switch *all* cards to
   the next fixed example prompt at once so styles can be compared side by side.

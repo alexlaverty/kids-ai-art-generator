@@ -244,6 +244,108 @@
     #prompt-input { min-height: 60px; }
   }
 
+  /* ---------- generator (idea machine) ---------- */
+  #generator-view {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 12px 40px;
+  }
+  .generator-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+  }
+  .gen-title { color: #4a3aa8; }
+  .gen-counter { color: #5a4ab8; font-size: .95rem; text-align: center; }
+  .reel-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .reel {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 14px rgba(80,60,160,.18);
+    padding: 12px 14px;
+    width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 3px solid transparent;
+  }
+  .reel.locked { border-color: #ffb74d; background: #fff8ec; }
+  .reel.golden {
+    border-color: #ffd54f;
+    background: linear-gradient(135deg, #fffbe8, #fff3c2);
+    animation: shimmer 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes shimmer {
+    from { box-shadow: 0 4px 14px rgba(255,193,7,.35); }
+    to   { box-shadow: 0 4px 26px rgba(255,193,7,.85); }
+  }
+  .reel-label {
+    font-size: .8rem;
+    font-weight: bold;
+    color: #8a7bd8;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .reel-value {
+    min-height: 3.2em;
+    display: flex;
+    align-items: center;
+    color: #333;
+    font-size: .98rem;
+    font-weight: bold;
+  }
+  .reel-value.spinning { filter: blur(1px); opacity: .7; }
+  .reel-btns { display: flex; gap: 6px; }
+  .reel-btn {
+    font-family: inherit;
+    font-size: 1rem;
+    border: none;
+    background: #f2edff;
+    border-radius: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: transform .1s;
+  }
+  .reel-btn:hover { transform: scale(1.1); }
+  #spin-btn {
+    font-size: 1.4rem;
+    padding: 14px 44px;
+    background: linear-gradient(135deg, #ff8a3d, #ff5ca8);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(255,92,168,.45);
+  }
+  #gen-sentence {
+    width: 100%;
+    max-width: 640px;
+    font-family: inherit;
+    font-size: 1.15rem;
+    border: 2px solid #d3c6ff;
+    border-radius: 18px;
+    padding: 14px 18px;
+    resize: vertical;
+    outline: none;
+    text-align: center;
+    background: #fff;
+  }
+  #gen-sentence:focus { border-color: #7c5cff; }
+  #gen-create-btn {
+    font-size: 1.15rem;
+    padding: 12px 36px;
+    background: linear-gradient(135deg, #7c5cff, #ff5ca8);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(124,92,255,.45);
+  }
+
   /* ---------- gallery ---------- */
   #gallery-view {
     display: none;
@@ -430,6 +532,7 @@
   <div class="header-right">
     <div class="tabs">
       <button class="tab-btn active" id="tab-chat">💬 Chat</button>
+      <button class="tab-btn" id="tab-generator">🎰 Generator</button>
       <button class="tab-btn" id="tab-gallery">🖼️ Gallery</button>
       <button class="tab-btn" id="tab-styles">🖌️ Styles</button>
     </div>
@@ -454,6 +557,27 @@
         <button class="btn" id="create-btn">✨ Create!</button>
       </div>
     </aside>
+  </div>
+
+  <div id="generator-view">
+    <div class="generator-inner">
+      <h2 class="gen-title">🎰 Idea Machine</h2>
+      <div class="gen-counter" id="gen-counter"></div>
+      <div class="reel-row" id="reel-row"></div>
+      <div class="reel-row">
+        <div class="reel" id="style-reel">
+          <div class="reel-label">Style</div>
+          <div class="reel-value" id="style-reel-value">🎲 any style</div>
+          <div class="reel-btns">
+            <button class="reel-btn" id="style-reel-lock" title="Keep this one">🔓</button>
+            <button class="reel-btn" id="style-reel-spin" title="Spin just this">🎲</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn" id="spin-btn">🎰 SPIN!</button>
+      <textarea id="gen-sentence" rows="3" placeholder="Spin to make an idea, or type your own…"></textarea>
+      <button class="btn" id="gen-create-btn">✨ Create!</button>
+    </div>
   </div>
 
   <div id="gallery-view">
@@ -571,16 +695,15 @@ const loadingMessages = [
 ];
 
 /* ---------- tabs ---------- */
-document.getElementById('tab-chat').onclick = () => switchTab('chat');
-document.getElementById('tab-gallery').onclick = () => switchTab('gallery');
-document.getElementById('tab-styles').onclick = () => switchTab('styles');
+const generatorView = document.getElementById('generator-view');
+const TABS = ['chat', 'generator', 'gallery', 'styles'];
+for (const t of TABS) document.getElementById('tab-' + t).onclick = () => switchTab(t);
 
 function switchTab(tab) {
   if (location.hash !== '#' + tab) history.replaceState(null, '', '#' + tab);
-  document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
-  document.getElementById('tab-gallery').classList.toggle('active', tab === 'gallery');
-  document.getElementById('tab-styles').classList.toggle('active', tab === 'styles');
+  for (const t of TABS) document.getElementById('tab-' + t).classList.toggle('active', t === tab);
   chatLayout.style.display = tab === 'chat' ? 'flex' : 'none';
+  generatorView.style.display = tab === 'generator' ? 'block' : 'none';
   galleryView.style.display = tab === 'gallery' ? 'block' : 'none';
   stylesView.style.display = tab === 'styles' ? 'block' : 'none';
   if (tab === 'gallery') renderGallery();
@@ -975,6 +1098,152 @@ promptInput.addEventListener('keydown', (e) => {
   }
 });
 
+/* ---------- generator (idea machine) ---------- */
+let promptParts = {};
+const GOLDEN_CHANCE = 0.02;
+const REELS = [
+  { id: 'who', label: 'Who?', symbol: 'who_shape', golden: 'golden_who' },
+  { id: 'doing', label: 'Doing what?', symbol: 'doing_shape', golden: 'golden_doing' },
+  { id: 'where', label: 'Where?', symbol: 'where_shape', golden: null },
+  { id: 'twist', label: 'Special twist', symbol: 'twist_shape', golden: 'golden_twist' },
+];
+const reelState = {};   // id -> { value, locked, golden }
+
+function expandSymbol(symbol, depth = 0) {
+  const rules = promptParts[symbol];
+  if (!rules || !rules.length || depth > 8) return '';
+  const rule = rules[Math.floor(Math.random() * rules.length)];
+  const text = rule.replace(/\[([a-z_]+)\]/g, (_, sym) => expandSymbol(sym, depth + 1));
+  // fix articles: "a extra fluffy" -> "an extra fluffy" ("u" skipped on
+  // purpose so "a unicorn" / "a ukulele" stay correct)
+  return text.replace(/\ba ([aeio])/g, 'an $1');
+}
+
+function combosOf(symbol, memo = {}) {
+  if (symbol in memo) return memo[symbol];
+  memo[symbol] = 1; // cycle guard
+  let total = 0;
+  for (const rule of (promptParts[symbol] || [])) {
+    let product = 1;
+    for (const m of rule.match(/\[([a-z_]+)\]/g) || []) product *= combosOf(m.slice(1, -1), memo);
+    total += product;
+  }
+  memo[symbol] = Math.max(total, 1);
+  return memo[symbol];
+}
+
+function rollReel(reel) {
+  const golden = reel.golden && promptParts[reel.golden] && Math.random() < GOLDEN_CHANCE;
+  return { value: expandSymbol(golden ? reel.golden : reel.symbol), golden: !!golden };
+}
+
+function updateSentence() {
+  const parts = REELS.map(r => (reelState[r.id] || {}).value || '');
+  if (parts.every(p => !p)) return;
+  document.getElementById('gen-sentence').value =
+    `${parts[0]} ${parts[1]} ${parts[2]}, ${parts[3]}`;
+}
+
+function renderReels() {
+  const row = document.getElementById('reel-row');
+  row.innerHTML = '';
+  for (const reel of REELS) {
+    const st = reelState[reel.id] || {};
+    const div = document.createElement('div');
+    div.className = 'reel' + (st.locked ? ' locked' : '') + (st.golden ? ' golden' : '');
+    div.innerHTML = `
+      <div class="reel-label"></div>
+      <div class="reel-value" id="reel-value-${reel.id}"></div>
+      <div class="reel-btns">
+        <button class="reel-btn" title="Keep this one">${st.locked ? '🔒' : '🔓'}</button>
+        <button class="reel-btn" title="Spin just this">🎲</button>
+      </div>`;
+    div.querySelector('.reel-label').textContent = (st.golden ? '⭐ ' : '') + reel.label;
+    div.querySelector('.reel-value').textContent = st.value || '—';
+    const [lockBtn, spinBtn] = div.querySelectorAll('.reel-btn');
+    lockBtn.onclick = () => { st.locked = !st.locked; reelState[reel.id] = st; renderReels(); };
+    spinBtn.onclick = () => spinReels([reel]);
+    row.appendChild(div);
+  }
+}
+
+function spinReels(reels) {
+  const targets = reels.filter(r => !(reelState[r.id] || {}).locked);
+  if (!targets.length) return;
+  // decide the final result up front — the animation is pure decoration,
+  // so throttled/paused timers in background tabs can't corrupt state
+  for (const reel of targets) {
+    const roll = rollReel(reel);
+    reelState[reel.id] = { ...reelState[reel.id], value: roll.value, golden: roll.golden };
+  }
+  updateSentence();
+
+  const start = performance.now();
+  let lastFlip = 0;
+  function tick(now) {
+    if (now - start >= 550) { renderReels(); return; }
+    if (now - lastFlip >= 70) {
+      lastFlip = now;
+      for (const reel of targets) {
+        const el = document.getElementById(`reel-value-${reel.id}`);
+        if (el) { el.classList.add('spinning'); el.textContent = expandSymbol(reel.symbol); }
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* style roulette */
+let genStyle = '';
+let genStyleLocked = false;
+
+function renderStyleReel() {
+  const s = styleByName(genStyle);
+  document.getElementById('style-reel-value').textContent = s ? `${s.emoji} ${s.name}` : '🎲 any style';
+  document.getElementById('style-reel-lock').textContent = genStyleLocked ? '🔒' : '🔓';
+  document.getElementById('style-reel').classList.toggle('locked', genStyleLocked);
+}
+
+function spinStyleReel() {
+  if (genStyleLocked || !styles.length) return;
+  genStyle = styles[Math.floor(Math.random() * styles.length)].name;
+
+  const start = performance.now();
+  let lastFlip = 0;
+  function tick(now) {
+    if (now - start >= 550) { renderStyleReel(); return; }
+    if (now - lastFlip >= 70) {
+      lastFlip = now;
+      const pick = styles[Math.floor(Math.random() * styles.length)];
+      document.getElementById('style-reel-value').textContent = `${pick.emoji} ${pick.name}`;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+document.getElementById('style-reel-lock').onclick = () => { genStyleLocked = !genStyleLocked; renderStyleReel(); };
+document.getElementById('style-reel-spin').onclick = () => spinStyleReel();
+document.getElementById('spin-btn').onclick = () => { spinReels(REELS); spinStyleReel(); };
+
+document.getElementById('gen-create-btn').onclick = () => {
+  const text = document.getElementById('gen-sentence').value.trim();
+  if (!text) { spinReels(REELS); return; }
+  if (genStyle) selectStyle(genStyle);
+  switchTab('chat');
+  startGeneration(text, genStyle);
+};
+
+function renderGenCounter() {
+  const memo = {};
+  let total = 1;
+  for (const reel of REELS) total *= combosOf(reel.symbol, memo);
+  total *= Math.max(styles.length, 1);
+  document.getElementById('gen-counter').textContent =
+    `This machine can make ${total.toLocaleString()} different ideas — every spin is one of them!`;
+}
+
 /* ---------- gallery ---------- */
 function galleryItem(msg, captionText) {
   const item = document.createElement('div');
@@ -1041,18 +1310,23 @@ lightbox.onclick = () => lightbox.classList.remove('show');
 
 /* ---------- init ---------- */
 async function init() {
-  const [stylesResp, messagesResp, promptsResp, styleImagesResp] = await Promise.all([
+  const [stylesResp, messagesResp, promptsResp, styleImagesResp, partsResp] = await Promise.all([
     fetch('/api/styles'),
     fetch('/api/messages'),
     fetch('/api/example-prompts'),
     fetch('/api/style-images'),
+    fetch('/api/prompt-parts'),
   ]);
   styles = await stylesResp.json();
   messages = await messagesResp.json();
   examplePrompts = await promptsResp.json();
   styleImages = await styleImagesResp.json();
+  promptParts = await partsResp.json();
   renderStyleStrip();
   renderOptions();
+  renderReels();
+  renderStyleReel();
+  renderGenCounter();
   for (const msg of messages) {
     addUserBubble(msg.prompt, msg.style);
     addImageBubble(msg);
@@ -1064,7 +1338,7 @@ async function init() {
     chatView.appendChild(div);
   }
   const hashTab = location.hash.replace('#', '');
-  if (hashTab === 'gallery' || hashTab === 'styles') switchTab(hashTab);
+  if (['generator', 'gallery', 'styles'].includes(hashTab)) switchTab(hashTab);
   scrollToBottom();
 }
 init();

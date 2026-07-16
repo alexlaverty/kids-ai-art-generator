@@ -1,0 +1,138 @@
+{
+  "who_shape": [
+    "a [animal]",
+    "a [size] [animal]",
+    "a [color] [animal]",
+    "a [size] [color] [animal]",
+    "a [animal] wearing [clothing]",
+    "a [adjective] [animal]",
+    "a [adjective] [creature]",
+    "a [creature] wearing [clothing]",
+    "a robot [animal]",
+    "a baby [animal]",
+    "a [animal] dressed as a [job]",
+    "a [creature] and a [animal]"
+  ],
+  "doing_shape": [
+    "eating [food]",
+    "baking a giant [food]",
+    "riding [vehicle]",
+    "juggling [things]",
+    "playing the [instrument]",
+    "building a castle out of [material]",
+    "having a tea party",
+    "dancing",
+    "painting a masterpiece",
+    "reading an enormous book",
+    "blowing giant bubbles",
+    "flying a kite",
+    "taking a bubble bath",
+    "singing a song",
+    "doing a handstand",
+    "racing [who_shape]",
+    "teaching [who_shape] to dance",
+    "having a picnic",
+    "throwing a birthday party",
+    "playing hide and seek"
+  ],
+  "where_shape": [
+    "in a [place_adj] [place_noun]",
+    "on the moon",
+    "under the sea",
+    "on top of a volcano",
+    "inside a snow globe",
+    "at the beach",
+    "in outer space",
+    "on a pirate ship",
+    "in a [place_noun] made of [material]",
+    "at the top of a giant beanstalk",
+    "in a bustling city",
+    "on a desert island"
+  ],
+  "twist_shape": [
+    "made of [material]",
+    "while it rains [things]",
+    "at sunset",
+    "under a rainbow",
+    "during a meteor shower",
+    "in a gentle snowstorm",
+    "with a [color] balloon",
+    "surrounded by [things]",
+    "wearing sunglasses",
+    "with a tiny [animal] friend",
+    "glowing in the dark",
+    "with fireworks in the sky",
+    "while [things] float by",
+    "balancing on one leg"
+  ],
+  "animal": [
+    "cat", "dog", "dragon", "penguin", "octopus", "giraffe", "hedgehog",
+    "unicorn", "T-rex", "bunny", "fox", "owl", "whale", "turtle", "sloth",
+    "koala", "panda", "raccoon", "axolotl", "narwhal", "flamingo", "llama",
+    "hamster", "elephant", "crocodile"
+  ],
+  "creature": [
+    "friendly monster", "robot", "fairy", "wizard", "mermaid", "alien",
+    "snowman", "gnome", "yeti", "friendly ghost", "superhero", "knight",
+    "pirate", "princess", "astronaut"
+  ],
+  "size": ["tiny", "giant", "enormous", "teeny-weeny", "extra fluffy", "very tall", "chubby", "miniature"],
+  "color": ["rainbow", "golden", "purple", "turquoise", "pink", "sparkly silver", "neon green", "sky blue", "polka-dotted", "stripy"],
+  "adjective": ["sleepy", "super happy", "curious", "brave", "giggling", "shy", "cheeky", "dancing", "singing", "bouncy", "grumpy-but-lovable", "extremely polite"],
+  "clothing": [
+    "a wizard hat", "a superhero cape", "pajamas", "a crown", "roller skates",
+    "a bow tie", "a raincoat", "a space helmet", "a flower crown",
+    "a knitted scarf", "fancy boots", "a chef's hat"
+  ],
+  "job": ["chef", "astronaut", "firefighter", "scientist", "pilot", "doctor", "teacher", "detective", "gardener", "painter"],
+  "food": [
+    "ice cream", "a mountain of spaghetti", "rainbow cake", "giant strawberries",
+    "pancakes", "a pizza", "cupcakes", "watermelon", "donuts", "a sandwich taller than a house",
+    "cookies", "mango smoothies"
+  ],
+  "vehicle": [
+    "a skateboard", "a bicycle", "a rocket", "a magic carpet", "a scooter",
+    "a sailboat", "a hot air balloon", "a unicycle", "a snowboard", "a go-kart",
+    "a submarine", "a flying surfboard"
+  ],
+  "things": [
+    "balloons", "cupcakes", "shooting stars", "books", "snowballs",
+    "seashells", "crayons", "donuts", "pillows", "tiny planets",
+    "butterflies", "paper airplanes", "bouncy balls", "flowers"
+  ],
+  "instrument": ["piano", "drums", "trumpet", "violin", "ukulele", "xylophone", "harmonica", "tuba"],
+  "material": [
+    "candy", "clouds", "building blocks", "ice cream", "paper", "gold",
+    "jelly", "flowers", "snow", "cheese", "seashells", "rainbow crystals"
+  ],
+  "place_adj": [
+    "magical", "tiny", "upside-down", "glowing", "frozen", "rainbow",
+    "secret", "floating", "underwater", "giant", "hidden", "sunny"
+  ],
+  "place_noun": [
+    "forest", "castle", "city", "garden", "island", "cave", "library",
+    "kitchen", "playground", "mountain", "lighthouse", "treehouse",
+    "space station", "meadow", "waterfall"
+  ],
+  "golden_who": [
+    "a legendary golden [animal]",
+    "a [animal] made of stardust",
+    "the world's happiest [animal]",
+    "a [creature] from the center of a rainbow",
+    "a mythical moon [animal]"
+  ],
+  "golden_doing": [
+    "painting the sky with a giant brush",
+    "conducting an orchestra of [things]",
+    "surfing on a wave of stars",
+    "planting a garden that grows [things]"
+  ],
+  "golden_twist": [
+    "made of pure starlight",
+    "while the sky rains rainbows",
+    "inside a beautiful dream",
+    "made of a million tiny galaxies",
+    "glowing like a little sun",
+    "painted by the universe itself"
+  ]
+}

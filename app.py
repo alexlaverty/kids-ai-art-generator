@@ -39,6 +39,7 @@ NEGATIVE_PROMPT = (
 )
 
 STYLES = json.loads((BASE_DIR / "styles.json").read_text(encoding="utf-8"))
+PROMPT_PARTS = json.loads((BASE_DIR / "prompt-parts.json").read_text(encoding="utf-8"))
 
 # Fixed prompts used for the Styles learning page. Every style renders the same
 # prompt so kids can flip through and compare how each style draws one subject.
@@ -305,6 +306,11 @@ def list_styles():
 @app.get("/api/example-prompts")
 def list_example_prompts():
     return EXAMPLE_PROMPTS
+
+
+@app.get("/api/prompt-parts")
+def list_prompt_parts():
+    return PROMPT_PARTS
 
 
 @app.get("/api/style-images")
