@@ -1,0 +1,324 @@
+"""Kid-friendly ComfyUI image chat — single-file FastAPI backend.
+
+Run ComfyUI first (default: http://127.0.0.1:8188), then:
+    pip install -r requirements.txt
+    python app.py
+and open http://127.0.0.1:8777
+"""
+
+import asyncio
+import json
+import random
+import re
+import sqlite3
+import time
+from pathlib import Path
+
+import httpx
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+BASE_DIR = Path(__file__).parent
+IMAGES_DIR = BASE_DIR / "images"
+IMAGES_DIR.mkdir(exist_ok=True)
+STYLE_IMAGES_DIR = IMAGES_DIR / "styles"
+STYLE_IMAGES_DIR.mkdir(exist_ok=True)
+DB_PATH = BASE_DIR / "chat.db"
+
+COMFY_URL = "http://127.0.0.1:8188"
+GENERATION_TIMEOUT_SECONDS = 600
+
+NEGATIVE_PROMPT = (
+    "scary, creepy, violent, gore, blood, nsfw, nude, weapon, "
+    "blurry, deformed, watermark, text, signature, low quality"
+)
+
+STYLES = json.loads((BASE_DIR / "styles.json").read_text(encoding="utf-8"))
+
+# Fixed prompts used for the Styles learning page. Every style renders the same
+# prompt so kids can flip through and compare how each style draws one subject.
+EXAMPLE_PROMPTS = [
+    "a friendly cat sitting in a sunny garden",
+    "a spaceship zooming past colorful planets",
+    "a castle on a hill with a rainbow in the sky",
+    "a friendly dragon reading a book",
+    "a lighthouse on a cliff by the sea",
+    "a robot making pancakes",
+    "a unicorn in a magical forest",
+    "an old sailing ship on the ocean",
+    "a cozy treehouse at sunset",
+    "a penguin holding a red balloon",
+]
+
+
+def style_slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+app = FastAPI(title="Art Robot")
+
+
+def get_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+with get_db() as _conn:
+    _conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prompt TEXT NOT NULL,
+            style TEXT NOT NULL DEFAULT '',
+            filename TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+        )
+        """
+    )
+    _cols = [row[1] for row in _conn.execute("PRAGMA table_info(messages)")]
+    if "elapsed_seconds" not in _cols:
+        _conn.execute("ALTER TABLE messages ADD COLUMN elapsed_seconds REAL")
+
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    style: str = ""
+
+
+def build_checkpoint_workflow(positive: str, ckpt_name: str, size: int, seed: int) -> dict:
+    return {
+        "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt_name}},
+        "2": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["1", 1]}},
+        "3": {"class_type": "CLIPTextEncode", "inputs": {"text": NEGATIVE_PROMPT, "clip": ["1", 1]}},
+        "4": {"class_type": "EmptyLatentImage", "inputs": {"width": size, "height": size, "batch_size": 1}},
+        "5": {
+            "class_type": "KSampler",
+            "inputs": {
+                "model": ["1", 0],
+                "positive": ["2", 0],
+                "negative": ["3", 0],
+                "latent_image": ["4", 0],
+                "seed": seed,
+                "steps": 20,
+                "cfg": 7,
+                "sampler_name": "euler",
+                "scheduler": "normal",
+                "denoise": 1,
+            },
+        },
+        "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}},
+        "7": {"class_type": "SaveImage", "inputs": {"images": ["6", 0], "filename_prefix": "art-robot"}},
+    }
+
+
+def build_flux2_workflow(positive: str, unet: str, text_encoder: str, vae: str, seed: int) -> dict:
+    # Same graph as the proven-working new-hero.py script: separate UNET/CLIP/VAE
+    # loaders, plain KSampler with cfg 4 and scheduler "simple", real negative prompt.
+    size = 1024
+    return {
+        "1": {"class_type": "UNETLoader", "inputs": {"unet_name": unet, "weight_dtype": "default"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": text_encoder, "type": "flux2", "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": vae}},
+        "4": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["2", 0]}},
+        "5": {"class_type": "CLIPTextEncode", "inputs": {"text": NEGATIVE_PROMPT, "clip": ["2", 0]}},
+        "6": {"class_type": "EmptyFlux2LatentImage", "inputs": {"width": size, "height": size, "batch_size": 1}},
+        "7": {
+            "class_type": "KSampler",
+            "inputs": {
+                "model": ["1", 0],
+                "positive": ["4", 0],
+                "negative": ["5", 0],
+                "latent_image": ["6", 0],
+                "seed": seed,
+                "steps": 20,
+                "cfg": 4.0,
+                "sampler_name": "euler",
+                "scheduler": "simple",
+                "denoise": 1.0,
+            },
+        },
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["7", 0], "vae": ["3", 0]}},
+        "9": {"class_type": "SaveImage", "inputs": {"images": ["8", 0], "filename_prefix": "art-robot"}},
+    }
+
+
+async def list_models(client: httpx.AsyncClient, folder: str) -> list[str]:
+    resp = await client.get(f"/models/{folder}")
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def pick_workflow(client: httpx.AsyncClient, positive: str, seed: int) -> dict:
+    """Choose a workflow based on what's installed: regular checkpoint if present,
+    otherwise a Flux 2 diffusion model + text encoder + VAE."""
+    checkpoints = await list_models(client, "checkpoints")
+    if checkpoints:
+        ckpt_name = checkpoints[0]
+        size = 1024 if any(tag in ckpt_name.lower() for tag in ("xl", "flux")) else 512
+        return build_checkpoint_workflow(positive, ckpt_name, size, seed)
+
+    diffusion_models = await list_models(client, "diffusion_models")
+    text_encoders = await list_models(client, "text_encoders")
+    vaes = await list_models(client, "vae")
+    unet = next((m for m in diffusion_models if "flux" in m.lower()), None)
+    vae = next((v for v in vaes if "flux" in v.lower()), None)
+    if not (unet and text_encoders and vae):
+        raise HTTPException(
+            status_code=503,
+            detail="ComfyUI is running but I couldn't find a usable model "
+            "(need a checkpoint, or a Flux diffusion model + text encoder + VAE).",
+        )
+    return build_flux2_workflow(positive, unet, text_encoders[0], vae, seed)
+
+
+async def run_comfy_generation(positive: str, seed: int) -> bytes:
+    """Submit a text-to-image job to ComfyUI and return the PNG bytes."""
+    async with httpx.AsyncClient(base_url=COMFY_URL, timeout=30) as client:
+        try:
+            workflow = await pick_workflow(client, positive, seed)
+        except httpx.HTTPError:
+            raise HTTPException(
+                status_code=503,
+                detail="The art robot isn't awake! Ask a grown-up to start ComfyUI.",
+            )
+        resp = await client.post("/prompt", json={"prompt": workflow})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"ComfyUI rejected the job: {resp.text[:300]}")
+        prompt_id = resp.json()["prompt_id"]
+
+        deadline = time.monotonic() + GENERATION_TIMEOUT_SECONDS
+        outputs = None
+        while time.monotonic() < deadline:
+            await asyncio.sleep(1)
+            resp = await client.get(f"/history/{prompt_id}")
+            history = resp.json().get(prompt_id)
+            if not history:
+                continue
+            if history.get("status", {}).get("status_str") == "error":
+                raise HTTPException(status_code=502, detail="The art robot had a problem making that one. Try again!")
+            if history.get("outputs"):
+                outputs = history["outputs"]
+                break
+        if outputs is None:
+            raise HTTPException(status_code=504, detail="The art robot took too long. Try again!")
+
+        image_ref = None
+        for node_output in outputs.values():
+            if node_output.get("images"):
+                image_ref = node_output["images"][0]
+                break
+        if image_ref is None:
+            raise HTTPException(status_code=502, detail="ComfyUI finished but made no image.")
+
+        resp = await client.get(
+            "/view",
+            params={
+                "filename": image_ref["filename"],
+                "subfolder": image_ref.get("subfolder", ""),
+                "type": image_ref.get("type", "output"),
+            },
+        )
+        resp.raise_for_status()
+        return resp.content
+
+
+@app.get("/api/styles")
+def list_styles():
+    return STYLES
+
+
+@app.get("/api/example-prompts")
+def list_example_prompts():
+    return EXAMPLE_PROMPTS
+
+
+@app.get("/api/style-images")
+def list_style_images():
+    """For each style, which example images already exist on disk.
+    Returns {style name: {prompt index: {path, mtime}}} with paths relative to /images/."""
+    result = {}
+    for style in STYLES:
+        slug = style_slug(style["name"])
+        existing = {}
+        for i in range(len(EXAMPLE_PROMPTS)):
+            filename = f"{slug}_{i}.png"
+            file_path = STYLE_IMAGES_DIR / filename
+            if file_path.exists():
+                existing[i] = {"path": f"styles/{filename}", "mtime": file_path.stat().st_mtime}
+        result[style["name"]] = existing
+    return result
+
+
+class StyleImageRequest(BaseModel):
+    style: str
+    prompt_index: int
+
+
+@app.post("/api/style-images/generate")
+async def generate_style_image(req: StyleImageRequest):
+    style = next((s for s in STYLES if s["name"] == req.style), None)
+    if style is None:
+        raise HTTPException(status_code=404, detail=f"Unknown style: {req.style}")
+    if not 0 <= req.prompt_index < len(EXAMPLE_PROMPTS):
+        raise HTTPException(status_code=400, detail="prompt_index out of range")
+
+    positive = f"{EXAMPLE_PROMPTS[req.prompt_index]}, {style['suffix']}"
+    seed = random.randint(0, 2**31)
+    image_bytes = await run_comfy_generation(positive, seed)
+
+    filename = f"{style_slug(style['name'])}_{req.prompt_index}.png"
+    (STYLE_IMAGES_DIR / filename).write_bytes(image_bytes)
+    return {
+        "style": style["name"],
+        "prompt_index": req.prompt_index,
+        "filename": f"styles/{filename}",
+        "mtime": time.time(),
+    }
+
+
+@app.get("/api/messages")
+def list_messages():
+    with get_db() as conn:
+        rows = conn.execute("SELECT * FROM messages ORDER BY id").fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/generate")
+async def generate(req: GenerateRequest):
+    prompt = req.prompt.strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Type what you want to see first!")
+
+    style = next((s for s in STYLES if s["name"] == req.style), None)
+    positive = f"{prompt}, {style['suffix']}" if style else prompt
+    seed = random.randint(0, 2**31)
+    started = time.monotonic()
+    image_bytes = await run_comfy_generation(positive, seed)
+    elapsed = round(time.monotonic() - started, 1)
+
+    filename = f"{int(time.time() * 1000)}_{seed}.png"
+    (IMAGES_DIR / filename).write_bytes(image_bytes)
+
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO messages (prompt, style, filename, elapsed_seconds) VALUES (?, ?, ?, ?)",
+            (prompt, req.style if style else "", filename, elapsed),
+        )
+        row = conn.execute("SELECT * FROM messages WHERE id = ?", (cur.lastrowid,)).fetchone()
+    return dict(row)
+
+
+@app.get("/")
+def index():
+    return FileResponse(BASE_DIR / "static" / "index.html")
+
+
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8777)

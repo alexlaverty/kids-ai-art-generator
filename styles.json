@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Cartoon",
+    "emoji": "📺",
+    "suffix": "cute cartoon style, big expressive eyes, clean bold lines, cheerful bright colors",
+    "description": "Bright, bouncy drawings like your favorite TV shows! Cartoons keep shapes simple and colors cheerful so every character bursts with personality.",
+    "fact": "Cartoons squash and stretch characters to make their movement feel bouncy and alive!"
+  },
+  {
+    "name": "Watercolor",
+    "emoji": "🎨",
+    "suffix": "watercolor painting, soft washes of color, wet-on-wet technique, gentle dreamy tones",
+    "description": "Painting with colors mixed into water, so they flow and melt into each other. Watercolor pictures look soft, dreamy, and a little bit magical.",
+    "fact": "Watercolor paint is mostly water, so the colors flow and blend into each other like magic!"
+  },
+  {
+    "name": "Pixel Art",
+    "emoji": "👾",
+    "suffix": "pixel art, 16-bit retro video game style, crisp pixels, vibrant palette",
+    "description": "Pictures built from tiny colored squares called pixels, just like old video games. Zoom in and you can count every single dot!",
+    "fact": "Pixel art is made of tiny squares! Old video games used it because computers could only draw a few dots at a time."
+  },
+  {
+    "name": "Van Gogh",
+    "emoji": "🌻",
+    "suffix": "in the style of Vincent van Gogh, thick swirling brushstrokes, impasto oil painting, starry night colors",
+    "description": "Painting like Vincent van Gogh, a famous Dutch artist who used thick, swirly strokes of oil paint and glowing blues and yellows.",
+    "fact": "Van Gogh painted with paint so thick you can still see his brushstrokes bumping up off the canvas!"
+  },
+  {
+    "name": "Comic Book",
+    "emoji": "💥",
+    "suffix": "comic book style, bold ink outlines, halftone dots, dynamic action colors",
+    "description": "The style of superhero comics: bold black outlines, bright punchy colors, and lots of action. KAPOW!",
+    "fact": "Comics use tiny dots of color called halftones — look really close at an old comic and you'll see them!"
+  },
+  {
+    "name": "Claymation",
+    "emoji": "🧱",
+    "suffix": "claymation style, plasticine clay model, stop motion animation look, soft studio lighting",
+    "description": "Everything looks like it was squished and sculpted out of soft modeling clay, just like the characters in stop-motion movies.",
+    "fact": "Claymation movies move clay models a tiny bit, snap a photo, and repeat — about 24 photos for just one second of film!"
+  },
+  {
+    "name": "Origami",
+    "emoji": "🦢",
+    "suffix": "origami style, folded paper art, clean crisp paper folds, minimalist",
+    "description": "The Japanese art of paper folding! Everything looks like it was carefully folded from crisp, clean sheets of paper.",
+    "fact": "Origami is the Japanese art of paper folding — 'ori' means fold and 'kami' means paper!"
+  },
+  {
+    "name": "Stained Glass",
+    "emoji": "🪟",
+    "suffix": "stained glass window style, bold black outlines, glowing jewel-toned colors",
+    "description": "Pictures made from pieces of colorful glass held together by dark lines, glowing like a window with the sun shining through.",
+    "fact": "Long ago, stained glass windows told stories with pictures for people who couldn't read!"
+  },
+  {
+    "name": "Crayon",
+    "emoji": "🖍️",
+    "suffix": "crayon drawing, waxy texture, childlike drawing style, bright colors on white paper",
+    "description": "Cheerful, waxy drawings like the ones you make with a brand-new box of crayons — bright colors and happy scribbles.",
+    "fact": "The biggest crayon ever made weighed as much as a car — and it was blue!"
+  },
+  {
+    "name": "Low Poly",
+    "emoji": "🔷",
+    "suffix": "low poly 3D render, flat shaded triangles, geometric shapes, pastel colors",
+    "description": "3D art built entirely from flat triangles, like a paper sculpture inside a computer. Simple shapes, but so cool!",
+    "fact": "Low poly art builds whole pictures out of triangles, just like the very first 3D video games!"
+  },
+  {
+    "name": "Great Wave",
+    "emoji": "🌊",
+    "suffix": "ukiyo-e Japanese woodblock print style, in the style of Hokusai, flat colors, elegant wave patterns",
+    "description": "Japanese woodblock printing, like the famous artist Hokusai. Flat colors, elegant lines, and beautiful curling waves.",
+    "fact": "Ukiyo-e pictures were carved into wood, covered in ink, and pressed onto paper. Hokusai's Great Wave is the most famous one ever!"
+  },
+  {
+    "name": "Pop Art",
+    "emoji": "🍭",
+    "suffix": "pop art style, bold flat colors, repeated patterns, screen print look, Andy Warhol inspired",
+    "description": "Loud, fun art from the 1960s with super-bold colors and repeating patterns. It turns everyday things into eye-popping art!",
+    "fact": "Pop artists like Andy Warhol turned everyday things — even soup cans — into famous art!"
+  }
+]

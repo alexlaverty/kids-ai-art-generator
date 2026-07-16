@@ -1,0 +1,9 @@
+# generated at runtime — personal chat history and images
+chat.db
+images/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
