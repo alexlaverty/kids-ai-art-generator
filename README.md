@@ -11,7 +11,7 @@ all generated from the *same* fixed prompts, so kids can flip through and see ho
 "a friendly cat sitting in a sunny garden" looks as a cartoon, a watercolor,
 pixel art, claymation, or a Van Gogh painting.
 
-![Chat view — type a prompt, pick a style, get a picture](docs/screenshot-chat.png)
+![Chat view — type a prompt, pick a style, get a picture](docs/screenshot-chat.webp)
 
 ## Features
 
@@ -32,7 +32,7 @@ pixel art, claymation, or a Van Gogh painting.
   scary…) is baked into every request server-side, where the kids can't turn
   it off. Everything is stored locally: SQLite + an `images/` folder.
 
-![Styles page — same prompt rendered in every style](docs/screenshot-styles.png)
+![Styles page — same prompt rendered in every style](docs/screenshot-styles.webp)
 
 ## Requirements
 
@@ -63,7 +63,7 @@ Images**. This takes a while (about 2m 40s per image for Flux 2 at 1024px on my
 machine — roughly 5 hours for the full set of 120), but you can stop any time
 and it picks up where it left off. Keep the tab open while it runs.
 
-![Gallery — everything ever generated, newest first](docs/screenshot-gallery.png)
+![Gallery — everything ever generated, newest first](docs/screenshot-gallery.webp)
 
 ## Customizing
 
